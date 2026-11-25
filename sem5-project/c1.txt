@@ -1,0 +1,268 @@
+cat vm_control_api.py
+"""
+Local control API for the CSPM dashboard.
+
+Run this on the laptop that hosts the KVM/libvirt VMs (vm1, vm2). It exposes:
+  - read-only report endpoints (serving reports/report.json / report_<host>.json)
+  - real VM start/stop/restart/status via `virsh`
+  - triggering your real detect.py scan and detect.py --fix remediation
+
+The dashboard (whether opened on this laptop or your friend's laptop on the
+same network) calls this API over HTTP.
+
+SECURITY NOTE: this API can start/stop your VMs and run shell commands on
+your machine. The token check is a minimal safeguard for a local/trusted
+network (e.g. your home wifi during a demo) — do NOT expose this port to
+the open internet.
+
+Setup:
+    pip install flask flask-cors --break-system-packages
+    (confirm `virsh list --all` works without sudo first — if it asks for a
+    password, run: sudo usermod -aG libvirt $USER   then log out and back in)
+
+Run:
+    python3 vm_control_api.py
+"""
+
+import json
+import os
+import subprocess
+import yaml
+from flask import Flask, jsonify, request
+from flask_cors import CORS
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(BASE_DIR, "config.yaml")
+
+app = Flask(__name__)
+CORS(app)  # allows the dashboard to call this API from a different laptop/origin
+
+
+def load_config():
+    with open(CONFIG_FILE) as f:
+        return yaml.safe_load(f)
+
+
+def require_token():
+    config = load_config()
+    expected = config.get("vm_control", {}).get("api_token", "")
+    provided = request.headers.get("X-API-Token", "")
+    return bool(expected) and provided == expected
+
+
+def domain_for(hostname):
+    config = load_config()
+    domains = config.get("vm_control", {}).get("domains", {})
+    return domains.get(hostname)
+
+
+def parse_inventory_ip(hostname):
+    """Pull ansible_host= for a given hostname out of ansible/inventory.ini"""
+    config = load_config()
+    inv_path = os.path.join(BASE_DIR, config["ansible"]["inventory"])
+    try:
+        with open(inv_path) as f:
+            for line in f:
+                line = line.strip()
+                if line == hostname or line.startswith(hostname + " "):
+                    for token in line.split():
+                        if token.startswith("ansible_host="):
+                            return token.split("=", 1)[1]
+    except FileNotFoundError:
+        pass
+    return "unknown"
+
+
+def run_virsh(args):
+    result = subprocess.run(
+        ["virsh", "-c", "qemu:///system"] + args,
+        capture_output=True, text=True, timeout=30
+    )
+    return result.returncode, result.stdout.strip(), result.stderr.strip()
+
+
+# ---------------------------------------------------------------
+# Read-only report endpoints — just display existing scan data
+# ---------------------------------------------------------------
+
+@app.route("/api/report")
+def get_report():
+    config = load_config()
+    path = os.path.join(BASE_DIR, config["dashboard"]["reports_dir"], "report.json")
+    if not os.path.exists(path):
+        return jsonify({"error": "No report yet. Run detect.py first."}), 404
+    with open(path) as f:
+        return jsonify(json.load(f))
+
+
+@app.route("/api/report/<hostname>")
+def get_host_report(hostname):
+    config = load_config()
+    path = os.path.join(
+        BASE_DIR, config["dashboard"]["reports_dir"], f"report_{hostname}.json"
+    )
+    if not os.path.exists(path):
+        return jsonify({"error": f"No report for {hostname}."}), 404
+    with open(path) as f:
+        return jsonify(json.load(f))
+
+
+# ---------------------------------------------------------------
+# VM control endpoints — require the API token
+# ---------------------------------------------------------------
+
+@app.route("/api/vm/<hostname>/status")
+def vm_status(hostname):
+    if not require_token():
+        return jsonify({"error": "unauthorized"}), 401
+
+    domain = domain_for(hostname)
+    if not domain:
+        return jsonify({"error": f"No libvirt domain mapped for {hostname}"}), 404
+
+    code, out, err = run_virsh(["domstate", domain])
+    if code != 0:
+        return jsonify({"error": err or "virsh failed"}), 500
+
+    return jsonify({
+        "hostname": hostname,
+        "domain": domain,
+        "state": out,
+        "ip": parse_inventory_ip(hostname),
+    })
+
+
+@app.route("/api/vm/<hostname>/stats")
+def vm_stats(hostname):
+    if not require_token():
+        return jsonify({"error": "unauthorized"}), 401
+
+    domain = domain_for(hostname)
+    if not domain:
+        return jsonify({"error": f"No libvirt domain mapped for {hostname}"}), 404
+
+    _, info_out, _ = run_virsh(["dominfo", domain])
+    _, mem_out, _ = run_virsh(["dommemstat", domain])
+
+    info = {}
+    for line in info_out.splitlines():
+        if ":" in line:
+            k, v = line.split(":", 1)
+            info[k.strip()] = v.strip()
+
+    mem = {}
+    for line in mem_out.splitlines():
+        parts = line.split()
+        if len(parts) == 2:
+            mem[parts[0]] = parts[1]
+
+    return jsonify({
+        "hostname": hostname,
+        "domain": domain,
+        "cpus": info.get("CPU(s)", "N/A"),
+        "max_memory": info.get("Max memory", "N/A"),
+        "actual_memory_kb": mem.get("actual", "N/A"),
+        "rss_kb": mem.get("rss", "N/A"),
+    })
+
+
+@app.route("/api/vm/<hostname>/start", methods=["POST"])
+def vm_start(hostname):
+    if not require_token():
+        return jsonify({"error": "unauthorized"}), 401
+
+    domain = domain_for(hostname)
+    if not domain:
+        return jsonify({"error": f"No libvirt domain mapped for {hostname}"}), 404
+
+    code, out, err = run_virsh(["start", domain])
+    if code != 0:
+        if "already active" in err.lower():
+            return jsonify({"status": "already_running", "message": err})
+        return jsonify({"error": err or "virsh start failed"}), 500
+
+    return jsonify({"status": "started", "message": out})
+
+
+@app.route("/api/vm/<hostname>/stop", methods=["POST"])
+def vm_stop(hostname):
+    if not require_token():
+        return jsonify({"error": "unauthorized"}), 401
+
+    domain = domain_for(hostname)
+    if not domain:
+        return jsonify({"error": f"No libvirt domain mapped for {hostname}"}), 404
+
+    force = request.args.get("force", "false").lower() == "true"
+    args = ["destroy", domain] if force else ["shutdown", domain]
+
+    code, out, err = run_virsh(args)
+    if code != 0:
+        return jsonify({"error": err or "virsh stop failed"}), 500
+
+    return jsonify({"status": "stopped" if force else "shutdown_requested", "message": out})
+
+
+@app.route("/api/vm/<hostname>/restart", methods=["POST"])
+def vm_restart(hostname):
+    if not require_token():
+        return jsonify({"error": "unauthorized"}), 401
+
+    domain = domain_for(hostname)
+    if not domain:
+        return jsonify({"error": f"No libvirt domain mapped for {hostname}"}), 404
+
+    code, out, err = run_virsh(["reboot", domain])
+    if code != 0:
+        return jsonify({"error": err or "virsh reboot failed"}), 500
+
+    return jsonify({"status": "restarting", "message": out})
+
+
+# ---------------------------------------------------------------
+# Scan / remediate — run your real detect.py pipeline
+# ---------------------------------------------------------------
+
+@app.route("/api/scan", methods=["POST"])
+def api_scan():
+    if not require_token():
+        return jsonify({"error": "unauthorized"}), 401
+
+    result = subprocess.run(
+        ["python3", "detect.py"], cwd=BASE_DIR,
+        capture_output=True, text=True, timeout=300
+    )
+    return jsonify({
+        "returncode": result.returncode,
+        "stdout": result.stdout[-4000:],
+        "stderr": result.stderr[-2000:],
+    })
+
+
+@app.route("/api/remediate", methods=["POST"])
+def api_remediate():
+    if not require_token():
+        return jsonify({"error": "unauthorized"}), 401
+
+    result = subprocess.run(
+        ["python3", "detect.py", "--fix"], cwd=BASE_DIR,
+        capture_output=True, text=True, timeout=600
+    )
+    return jsonify({
+        "returncode": result.returncode,
+        "stdout": result.stdout[-4000:],
+        "stderr": result.stderr[-2000:],
+    })
+
+
+@app.route("/api/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+if __name__ == "__main__":
+    config = load_config()
+    port = config.get("vm_control", {}).get("host_port", 5000)
+    print(f"CSPM VM control API running on http://0.0.0.0:{port}")
+    print("Make sure this port is reachable from whichever laptop opens the dashboard.")
+    app.run(host="0.0.0.0", port=port)

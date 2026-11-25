@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Patch Management | Advanced Private Cloud CSPM</title>
+
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/sidebar.css">
+<link rel="stylesheet" href="css/cards.css">
+<link rel="stylesheet" href="css/tables.css">
+<link rel="stylesheet" href="css/animations.css">
+<link rel="stylesheet" href="css/responsive.css">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<style>
+
+/* =========================================================
+   PATCH MANAGEMENT PAGE
+   ========================================================= */
+
+.page-subtitle {
+    color: #94a3b8;
+    margin-top: 6px;
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* VM Status */
+
+.vm-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 12px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: bold;
+    background: rgba(34,197,94,0.12);
+    color: #22c55e;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #22c55e;
+}
+
+/* Buttons */
+
+.patch-btn {
+    border: none;
+    padding: 11px 17px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.2s ease;
+}
+
+.patch-btn:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
+}
+
+.primary-btn {
+    background: #2563eb;
+    color: white;
+}
+
+.secondary-btn {
+    background: rgba(255,255,255,0.08);
+    color: #e2e8f0;
+}
+
+.success-btn {
+    background: #16a34a;
+    color: white;
+}
+
+.warning-btn {
+    background: #d97706;
+    color: white;
+}
+
+.danger-btn {
+    background: #dc2626;
+    color: white;
+}
+
+.patch-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Summary cards */
+
+.patch-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.patch-card .card-icon {
+    font-size: 25px;
+    margin-bottom: 10px;
+}
+
+.patch-card small {
+    display: block;
+    color: #94a3b8;
+    margin-top: 6px;
+}
+
+/* Panels */
+
+.patch-panel {
+    margin-top: 22px;
+}
+
+/* VM information */
+
+.vm-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-top: 18px;
+}
+
+.vm-info {
+    padding: 16px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+}
+
+.vm-info span {
+    display: block;
+    color: #94a3b8;
+    font-size: 13px;
+    margin-bottom: 7px;
+}
+
+.vm-info strong {
+    font-size: 16px;
+}
+
+/* Patch progress */
+
+.progress-container {
+    margin-top: 18px;
+}
+
+.progress-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+/* Package search */
+
+.package-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+}
+
+.search-box i {
+    position: absolute;
+    left: 13px;
+    top: 13px;
+    color: #94a3b8;
+}
+
+.search-box input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 11px 12px 11px 38px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: white;
+    outline: none;
+}
+
+.filter-select {
+    padding: 11px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: #172033;
+    color: white;
+    outline: none;
+}
+
+/* Package rows */
+
+.package-name {
+    font-weight: 600;
+}
+
+.package-version {
+    font-family: monospace;
+    color: #cbd5e1;
+}
+
+.package-action {
+    padding: 7px 11px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    background: rgba(37,99,235,0.18);
+    color: #60a5fa;
+}
+
+.package-action:hover {
+    background: rgba(37,99,235,0.3);
+}
+
+/* Badges */
+
+.badge.updated {
+    background: rgba(34,197,94,0.15);
+    color: #22c55e;
+}
+
+.badge.pending {
+    background: rgba(245,158,11,0.15);
+    color: #f59e0b;
+}
+
+.badge.critical {
+    background: rgba(239,68,68,0.15);
+    color: #ef4444;
+}
+
+/* Scanner */
+
+.scanner-box {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 18px;
+    border-radius: 10px;
+    background: rgba(37,99,235,0.08);
+    border: 1px solid rgba(37,99,235,0.18);
+}
+
+.scanner-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(37,99,235,0.18);
+    font-size: 21px;
+}
+
+.scanner-text h3 {
+    margin: 0 0 5px;
+}
+
+.scanner-text p {
+    margin: 0;
+    color: #94a3b8;
+}
+
+/* Modal */
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    inset: 0;
+    background: rgba(0,0,0,0.72);
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal.show {
+    display: flex;
+}
+
+.modal-content {
+    width: 100%;
+    max-width: 550px;
+    background: #111827;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 25px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.close-modal {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 22px;
+    cursor: pointer;
+}
+
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 13px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.detail-row:last-child {
+    border-bottom: none;
+}
+
+.detail-row span {
+    color: #94a3b8;
+}
+
+/* Toast */
+
+.toast {
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    z-index: 10000;
+    min-width: 280px;
+    max-width: 380px;
+    padding: 15px 18px;
+    border-radius: 10px;
+    background: #111827;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    display: none;
+}
+
+.toast.show {
+    display: block;
+    animation: toastIn 0.25s ease;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Scan animation */
+
+.scanning {
+    animation: pulseScan 1s infinite;
+}
+
+@keyframes pulseScan {
+    0%,100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.08);
+        opacity: 0.65;
+    }
+}
+
+/* Responsive */
+
+@media (max-width: 1000px) {
+
+    .vm-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+@media (max-width: 650px) {
+
+    .vm-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .header-actions {
+        margin-top: 15px;
+    }
+
+    .scanner-box {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<!-- =========================================================
+     SIDEBAR
+========================================================= -->
+
+<aside class="sidebar">
+
+<div class="logo">
+
+<i class="fa-solid fa-shield-halved"></i>
+
+<h2>CSPM</h2>
+
+</div>
+
+<ul>
+
+<li>
+<a href="index.html">
+<i class="fa-solid fa-chart-line"></i>
+Dashboard
+</a>
+</li>
+
+<li>
+<a href="vm.html">
+<i class="fa-solid fa-server"></i>
+Virtual Machines
+</a>
+</li>
+
+<li>
+<a href="compliance.html">
+<i class="fa-solid fa-shield"></i>
+Compliance
+</a>
+</li>
+
+<li>
+<a href="security.html">
+<i class="fa-solid fa-lock"></i>
+Security
+</a>
+</li>
+
+<li>
+<a href="drift.html">
+<i class="fa-solid fa-arrows-rotate"></i>
+Drift Detection
+</a>
+</li>
+
+<li>
+<a href="baseline.html">
+<i class="fa-solid fa-layer-group"></i>
+Baseline
+</a>
+</li>
+
+<li class="active">
+<a href="patch.html">
+<i class="fa-solid fa-download"></i>
+Patch Management
+</a>
+</li>
+
+<li>
+<a href="remediation.html">
+<i class="fa-solid fa-screwdriver-wrench"></i>
+Remediation
+</a>
+</li>
+
+<li>
+<a href="reports.html">
+<i class="fa-solid fa-file-lines"></i>
+Reports
+</a>
+</li>
+
+<li>
+<a href="settings.html">
+<i class="fa-solid fa-gear"></i>
+Settings
+</a>
+</li>
+
+</ul>
+
+</aside>
+
+
+<!-- =========================================================
+     MAIN CONTENT
+========================================================= -->
+
+<main class="content">
+
+<header class="header">
+
+<div>
+
+<h1>
+<i class="fa-solid fa-download"></i>
+Patch Management
+</h1>
+
+<p class="page-subtitle">
+Software Update & Security Patch Monitoring
+</p>
+
+</div>
+
+<div class="header-actions">
+
+<span class="vm-status">
+<span class="status-dot"></span>
+VM Monitoring Active
+</span>
+
+<button class="patch-btn primary-btn"
+id="scanButton"
+onclick="runPatchScan()">
+
+<i class="fa-solid fa-magnifying-glass"></i>
+Run Patch Scan
+
+</button>
+
+</div>
+
+</header>
+
+
+<!-- =========================================================
+     SUMMARY CARDS
+========================================================= -->
+
+<section class="cards">
+
+<div class="card patch-card">
+
+<div class="card-icon">
+<i class="fa-solid fa-box"></i>
+</div>
+
+<h3>Installed Packages</h3>
+
+<h1 id="installedPackages">420</h1>
+
+<small>
+Packages detected
+</small>
+
+</div>
+
+
+<div class="card patch-card">
+
+<div class="card-icon">
+<i class="fa-solid fa-cloud-arrow-down"></i>
+</div>
+
+<h3>Available Updates</h3>
+
+<h1 id="availableUpdates">0</h1>
+
+<small id="updatesText">
+System is up to date
+</small>
+
+</div>
+
+
+<div class="card patch-card">
+
+<div class="card-icon">
+<i class="fa-solid fa-shield"></i>
+</div>
+
+<h3>Security Updates</h3>
+
+<h1 id="securityUpdates">—</h1>
+
+<small>
+Security patches pending
+</small>
+
+</div>
+
+
+<div class="card patch-card">
+
+<div class="card-icon">
+<i class="fa-solid fa-circle-check"></i>
+</div>
+
+<h3>Patch Compliance</h3>
+
+<h1 id="patchCompliance">N/A</h1>
+
+<small>
+Current patch status
+</small>
+
+</div>
+
+</section>
+
+
+<!-- =========================================================
+     PATCH TARGET
+========================================================= -->
+
+<div class="panel patch-panel">
+
+<h2>
+<i class="fa-solid fa-server"></i>
+Patch Target
+</h2>
+
+<div id="patchVmGrid" class="vm-grid">
+    <div class="vm-info">
+        <span>Virtual Machines</span>
+        <strong>Run Patch Scan to load live VM details</strong>
+    </div>
+</div>
+
+
+<div class="progress-container">
+
+<div class="progress-header">
+
+<strong>Patch Compliance</strong>
+
+<strong id="progressValue">N/A</strong>
+
+</div>
+
+<div class="progress-bar">
+
+<div
+class="progress-fill"
+id="progressFill"
+style="width:0%; background:#94a3b8;">
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =========================================================
+     PACKAGE TABLE
+========================================================= -->
+
+<div class="panel patch-panel">
+
+<h2>
+<i class="fa-solid fa-box-open"></i>
+Installed Package Status
+</h2>
+
+<div class="package-toolbar">
+
+<div class="search-box">
+
+<i class="fa-solid fa-search"></i>
+
+<input
+type="text"
+id="packageSearch"
+placeholder="Search package..."
+onkeyup="filterPackages()">
+
+</div>
+
+
+<select
+class="filter-select"
+id="packageFilter"
+onchange="filterPackages()">
+
+<option value="all">
+All Packages
+</option>
+
+<option value="updated">
+Updated
+</option>
+
+<option value="pending">
+Pending
+</option>
+
+</select>
+
+</div>
+
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Package</th>
+
+<th>Installed Version</th>
+
+<th>Latest Version</th>
+
+<th>Status</th>
+
+<th>Action</th>
+
+</tr>
+
+</thead>
+
+<tbody id="packageTable">
+
+<tr data-status="updated">
+
+<td class="package-name">
+<i class="fa-solid fa-lock"></i>
+OpenSSH
+</td>
+
+<td class="package-version">
+10.3
+</td>
+
+<td class="package-version">
+10.3
+</td>
+
+<td>
+<span class="badge updated">
+Updated
+</span>
+</td>
+
+<td>
+
+<button
+class="package-action"
+onclick="showPackageDetails('OpenSSH','10.3','10.3','Updated')">
+
+<i class="fa-solid fa-eye"></i>
+Details
+
+</button>
+
+</td>
+
+</tr>
+
+
+<tr data-status="updated">
+
+<td class="package-name">
+<i class="fa-brands fa-python"></i>
+Python
+</td>
+
+<td class="package-version">
+3.13.9
+</td>
+
+<td class="package-version">
+3.13.9
+</td>
+
+<td>
+<span class="badge updated">
+Updated
+</span>
+</td>
+
+<td>
+
+<button
+class="package-action"
+onclick="showPackageDetails('Python','3.13.9','3.13.9','Updated')">
+
+<i class="fa-solid fa-eye"></i>
+Details
+
+</button>
+
+</td>
+
+</tr>
+
+
+<tr data-status="updated">
+
+<td class="package-name">
+<i class="fa-brands fa-git-alt"></i>
+Git
+</td>
+
+<td class="package-version">
+2.51.0
+</td>
+
+<td class="package-version">
+2.51.0
+</td>
+
+<td>
+<span class="badge updated">
+Updated
+</span>
+</td>
+
+<td>
+
+<button
+class="package-action"
+onclick="showPackageDetails('Git','2.51.0','2.51.0','Updated')">
+
+<i class="fa-solid fa-eye"></i>
+Details
+
+</button>
+
+</td>
+
+</tr>
+
+
+<tr data-status="updated">
+
+<td class="package-name">
+<i class="fa-solid fa-server"></i>
+Ansible
+</td>
+
+<td class="package-version">
+2.21
+</td>
+
+<td class="package-version">
+2.21
+</td>
+
+<td>
+<span class="badge updated">
+Updated
+</span>
+</td>
+
+<td>
+
+<button
+class="package-action"
+onclick="showPackageDetails('Ansible','2.21','2.21','Updated')">
+
+<i class="fa-solid fa-eye"></i>
+Details
+
+</button>
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+
+<!-- =========================================================
+     SECURITY PATCH STATUS
+========================================================= -->
+
+<div class="panel patch-panel">
+
+<h2>
+<i class="fa-solid fa-shield-halved"></i>
+Patch Security Status
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Security Check</th>
+
+<th>Result</th>
+
+<th>Status</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+<tr>
+
+<td>
+<i class="fa-solid fa-shield"></i>
+Security Updates
+</td>
+
+<td id="securityResult">Unknown — detection not verified</td>
+
+<td>
+<span class="badge pending" id="securityBadge">Unknown</span>
+</td>
+
+</tr>
+
+
+<tr>
+
+<td>
+<i class="fa-solid fa-triangle-exclamation"></i>
+Critical Updates
+</td>
+
+<td id="criticalResult">Unknown — severity data unavailable</td>
+
+<td>
+<span class="badge pending" id="criticalBadge">Unknown</span>
+
+</td>
+
+</tr>
+
+
+<tr>
+
+<td>
+<i class="fa-solid fa-power-off"></i>
+Reboot Required
+</td>
+
+<td id="rebootResult">
+No
+</td>
+
+<td>
+<span class="badge pending" id="rebootBadge">Unknown</span>
+
+</td>
+
+</tr>
+
+
+<tr>
+
+<td>
+<i class="fa-solid fa-chart-line"></i>
+Patch Compliance
+</td>
+
+<td id="securityComplianceResult">N/A</td>
+
+<td>
+<span class="badge pending" id="securityComplianceBadge">Not calculated</span>
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+
+<!-- =========================================================
+     PATCH HISTORY
+========================================================= -->
+
+<div class="panel patch-panel">
+
+<h2>
+<i class="fa-solid fa-clock-rotate-left"></i>
+Patch History
+</h2>
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Date</th>
+
+<th>Activity</th>
+
+<th>Result</th>
+
+<th>Scanner</th>
+
+</tr>
+
+</thead>
+
+<tbody id="historyTable">
+</tbody>
+
+</table>
+
+</div>
+
+
+<!-- =========================================================
+     PATCH SCANNER
+========================================================= -->
+
+<div class="panel patch-panel">
+
+<h2>
+<i class="fa-solid fa-radar"></i>
+Scan Status
+</h2>
+
+<div class="scanner-box">
+
+<div
+class="scanner-icon"
+id="scannerIcon">
+
+<i class="fa-solid fa-shield-check"></i>
+
+</div>
+
+<div class="scanner-text">
+
+<h3 id="scannerTitle">
+Scanner Ready
+</h3>
+
+<p id="scannerMessage">
+Run a patch scan to check the VM for available software
+and security updates.
+</p>
+
+</div>
+
+</div>
+
+<br>
+
+
+
+</div>
+
+</main>
+
+
+<!-- =========================================================
+     PACKAGE DETAILS MODAL
+========================================================= -->
+
+<div class="modal" id="packageModal">
+
+<div class="modal-content">
+
+<div class="modal-header">
+
+<h2>
+<i class="fa-solid fa-box"></i>
+Package Details
+</h2>
+
+<button
+class="close-modal"
+onclick="closePackageModal()">
+
+<i class="fa-solid fa-xmark"></i>
+
+</button>
+
+</div>
+
+<div class="detail-row">
+
+<span>Package</span>
+
+<strong id="modalPackage">
+-</strong>
+
+</div>
+
+<div class="detail-row">
+
+<span>Installed Version</span>
+
+<strong id="modalInstalled">
+-</strong>
+
+</div>
+
+<div class="detail-row">
+
+<span>Latest Version</span>
+
+<strong id="modalLatest">
+-</strong>
+
+</div>
+
+<div class="detail-row">
+
+<span>Status</span>
+
+<strong id="modalStatus">
+-
+</strong>
+
+</div>
+
+<br>
+
+<button
+class="patch-btn secondary-btn"
+onclick="closePackageModal()">
+
+Close
+
+</button>
+
+</div>
+
+</div>
+
+
+<!-- =========================================================
+     TOAST
+========================================================= -->
+
+<div class="toast" id="toast">
+
+<strong id="toastTitle">
+Patch Management
+</strong>
+
+<br>
+
+<span id="toastMessage">
+Operation completed.
+</span>
+
+</div>
+
+
+<!-- =========================================================
+     JAVASCRIPT
+========================================================= -->
+
+<script>
+
+/* =========================================================
+   PATCH SCAN
+========================================================= */
+
+let scanRunning = false;
+
+async function runPatchScan() {
+    if (scanRunning) return;
+    scanRunning = true;
+
+    const scanButton = document.getElementById("scanButton");
+    const bottomButton = document.getElementById("bottomScanButton");
+    const scannerIcon = document.getElementById("scannerIcon");
+    const scannerTitle = document.getElementById("scannerTitle");
+    const scannerMessage = document.getElementById("scannerMessage");
+
+    if (scanButton) scanButton.disabled = true;
+    if (bottomButton) bottomButton.disabled = true;
+    if (scannerIcon) scannerIcon.classList.add("scanning");
+
+    if (scannerTitle) scannerTitle.innerText = "Scanning managed VMs...";
+    if (scannerMessage) {
+        scannerMessage.innerText =
+            "Collecting installed packages and available updates from the backend...";
+    }
+
+    try {
+        const response = await fetch("http://127.0.0.1:5000/api/patch-status", {
+            method: "GET",
+            headers: { "Accept": "application/json" },
+            cache: "no-store"
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || `Patch scan failed (HTTP ${response.status})`);
+        }
+
+        const summary = data.summary || {};
+        const hosts = Object.values(data.hosts || {});
+        const packages = Array.isArray(data.packages) ? data.packages : [];
+
+        document.getElementById("installedPackages").innerText =
+            Number(summary.installed_packages ?? 0).toLocaleString();
+
+        document.getElementById("availableUpdates").innerText =
+            Number(summary.available_updates ?? 0).toLocaleString();
+
+        document.getElementById("securityUpdates").innerText =
+            Number(summary.security_updates ?? 0).toLocaleString();
+
+        // Installed package counts alone do not establish compliance.
+        document.getElementById("patchCompliance").innerText = "N/A";
+        document.getElementById("progressValue").innerText = "N/A";
+        document.getElementById("progressFill").style.width = "0%";
+
+        // Security detection is not yet validated; do not claim "Secure".
+        document.getElementById("securityResult").innerText =
+            "Unknown — security detection not verified";
+        document.getElementById("securityBadge").innerText = "Unknown";
+        document.getElementById("securityBadge").className = "badge pending";
+
+        document.getElementById("criticalResult").innerText =
+            "Unknown — severity data unavailable";
+        document.getElementById("criticalBadge").innerText = "Unknown";
+        document.getElementById("criticalBadge").className = "badge pending";
+
+        document.getElementById("securityComplianceResult").innerText = "N/A";
+        document.getElementById("securityComplianceBadge").innerText = "Not calculated";
+        document.getElementById("securityComplianceBadge").className = "badge pending";
+
+        const rebootCount = Number(summary.reboot_required_vms ?? 0);
+        const updateCount = Number(summary.available_updates ?? 0);
+
+        document.getElementById("rebootResult").innerText =
+            rebootCount > 0 ? `${rebootCount} VM(s) require reboot` : "No reboot flagged";
+        document.getElementById("rebootBadge").innerText =
+            rebootCount > 0 ? "Required" : "Not flagged";
+        document.getElementById("rebootBadge").className =
+            "badge " + (rebootCount > 0 ? "critical" : "updated");
+
+        const aptChecksSucceeded = hosts.length > 0 &&
+            hosts.every(host => host.apt_query_succeeded === true);
+
+        // Render Patch Target cards from actual backend VM data.
+        const vmGrid = document.getElementById("patchVmGrid");
+        if (vmGrid) {
+            vmGrid.replaceChildren();
+
+            if (hosts.length === 0) {
+                vmGrid.textContent = "No VM data returned by the backend.";
+            } else {
+                for (const [vmName, vm] of Object.entries(data.hosts || {})) {
+                    const card = document.createElement("div");
+                    card.className = "vm-info";
+
+                    const fields = [
+                        ["Virtual Machine", vmName],
+                        ["Operating System", vm.operating_system || "Unknown"],
+                        ["IP Address", vm.ip_address || "Unknown"],
+                        ["Available Updates", vm.apt_query_succeeded === true
+                            ? String(vm.available_update_count ?? "Unknown")
+                            : "Unknown — APT check failed"],
+                        ["Reboot Status", vm.reboot_required === true
+                            ? "Reboot required"
+                            : "No reboot flagged"],
+                        ["Patch Status", vm.apt_query_succeeded !== true
+                            ? "PARTIAL DATA"
+                            : ((Number(vm.available_update_count || 0) > 0 ||
+                                vm.reboot_required === true)
+                                ? "UPDATES AVAILABLE"
+                                : "NO UPDATES FOUND")]
+                    ];
+
+                    for (const [label, value] of fields) {
+                        const wrapper = document.createElement("div");
+                        wrapper.style.marginBottom = "10px";
+
+                        const caption = document.createElement("span");
+                        caption.textContent = label;
+
+                        const detail = document.createElement("strong");
+                        detail.textContent = value;
+
+                        wrapper.append(caption, detail);
+                        card.appendChild(wrapper);
+                    }
+
+                    vmGrid.appendChild(card);
+                }
+            }
+        }
+
+        document.getElementById("updatesText").innerText =
+            !aptChecksSucceeded ? "Some package update checks could not be confirmed" :
+            (updateCount > 0
+                ? `${updateCount} package updates available`
+                : "No updates listed in the existing APT cache");
+
+        if (scannerTitle) scannerTitle.innerText = "Patch Scan Completed";
+        if (scannerMessage) {
+            scannerMessage.innerText =
+                `${hosts.length} VM(s) checked. ` +
+                `${updateCount} available updates; ${rebootCount} VM(s) require reboot. ` +
+                (data.cache_note || "");
+        }
+
+        // Render real backend package data using the existing five-column table.
+        const table = document.getElementById("packageTable");
+        if (table) {
+            table.replaceChildren();
+
+            if (packages.length === 0) {
+                const row = table.insertRow();
+                const cell = row.insertCell();
+                cell.colSpan = 5;
+                cell.textContent = "No package records were returned by the API.";
+            } else {
+                for (const pkg of packages) {
+                    const name = String(pkg.name ?? "Unknown");
+                    const installed = String(pkg.installed_version ?? "Unknown");
+                    const latest = String(pkg.latest_version ?? "Not available");
+                    const status = String(pkg.status ?? "Unknown");
+
+                    const row = table.insertRow();
+                    row.dataset.status = status.toLowerCase();
+
+                    const nameCell = row.insertCell();
+                    nameCell.className = "package-name";
+                    nameCell.textContent = name;
+
+                    const installedCell = row.insertCell();
+                    installedCell.className = "package-version";
+                    installedCell.textContent = installed;
+
+                    const latestCell = row.insertCell();
+                    latestCell.className = "package-version";
+                    latestCell.textContent = latest;
+
+                    const statusCell = row.insertCell();
+                    const badge = document.createElement("span");
+                    badge.className = "badge " +
+                        (status.toLowerCase() === "updated" ? "updated" : "pending");
+                    badge.textContent = status;
+                    statusCell.appendChild(badge);
+
+                    const actionCell = row.insertCell();
+                    const button = document.createElement("button");
+                    button.className = "package-action";
+                    button.type = "button";
+                    button.innerHTML = '<i class="fa-solid fa-eye"></i> Details';
+                    button.addEventListener("click", () => {
+                        showPackageDetails(name, installed, latest, status);
+                    });
+                    actionCell.appendChild(button);
+                }
+            }
+        }
+
+        addHistoryEntry(
+            "Read-only Patch Scan",
+            `${hosts.length} VM(s) checked; ${updateCount} updates listed`,
+            true
+        );
+
+        if (typeof showToast === "function") {
+            showToast("Patch Scan Completed",
+                `${hosts.length} VM(s) checked; ${updateCount} available updates found.`);
+        }
+    } catch (error) {
+        console.error("Patch status API error:", error);
+        addHistoryEntry(
+            "Read-only Patch Scan",
+            error.message || "Scan failed",
+            false
+        );
+
+        if (scannerTitle) scannerTitle.innerText = "Patch Scan Failed";
+        if (scannerMessage) scannerMessage.innerText =
+            error.message || "Unable to retrieve patch status from the backend.";
+
+        if (document.getElementById("vmPatchStatus")) {
+            document.getElementById("vmPatchStatus").innerText = "SCAN FAILED";
+        }
+
+        if (typeof showToast === "function") {
+            showToast("Patch Scan Failed",
+                error.message || "Could not retrieve patch status.");
+        }
+    } finally {
+        scanRunning = false;
+        if (scanButton) scanButton.disabled = false;
+        if (bottomButton) bottomButton.disabled = false;
+        if (scannerIcon) scannerIcon.classList.remove("scanning");
+    }
+}
+
+/* =========================================================
+   PACKAGE SEARCH / FILTER
+========================================================= */
+
+function filterPackages() {
+
+    const search =
+        document.getElementById("packageSearch")
+        .value
+        .toLowerCase();
+
+    const filter =
+        document.getElementById("packageFilter")
+        .value;
+
+    const rows =
+        document.querySelectorAll(
+            "#packageTable tr"
+        );
+
+    rows.forEach(function(row) {
+
+        const text =
+            row.innerText.toLowerCase();
+
+        const status =
+            row.dataset.status;
+
+        const searchMatch =
+            text.includes(search);
+
+        const filterMatch =
+            filter === "all" ||
+            status === filter;
+
+        if (searchMatch && filterMatch) {
+
+            row.style.display = "";
+
+        } else {
+
+            row.style.display = "none";
+
+        }
+
+    });
+
+}
+
+
+/* =========================================================
+   PACKAGE DETAILS
+========================================================= */
+
+function showPackageDetails(
+    name,
+    installed,
+    latest,
+    status
+) {
+
+    document.getElementById("modalPackage")
+        .innerText = name;
+
+    document.getElementById("modalInstalled")
+        .innerText = installed;
+
+    document.getElementById("modalLatest")
+        .innerText = latest;
+
+    document.getElementById("modalStatus")
+        .innerText = status;
+
+    document.getElementById("packageModal")
+        .classList.add("show");
+
+}
+
+
+function closePackageModal() {
+
+    document.getElementById("packageModal")
+        .classList.remove("show");
+
+}
+
+
+/* =========================================================
+   CLICK OUTSIDE MODAL
+========================================================= */
+
+document.getElementById("packageModal")
+.addEventListener("click", function(event) {
+
+    if (event.target === this) {
+
+        closePackageModal();
+
+    }
+
+});
+
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+function showToast(title, message) {
+
+    const toast =
+        document.getElementById("toast");
+
+    document.getElementById("toastTitle")
+        .innerText = title;
+
+    document.getElementById("toastMessage")
+        .innerText = message;
+
+    toast.classList.add("show");
+
+    setTimeout(function() {
+
+        toast.classList.remove("show");
+
+    }, 4000);
+
+}
+
+
+/* =========================================================
+   PATCH HISTORY — records actual scan events
+========================================================= */
+
+function renderPatchHistory() {
+    const table = document.getElementById("historyTable");
+    if (!table) return;
+
+    table.replaceChildren();
+
+    let entries = [];
+    try {
+        entries = JSON.parse(localStorage.getItem("sentinelforgePatchHistory") || "[]");
+        if (!Array.isArray(entries)) entries = [];
+    } catch (_) {
+        entries = [];
+    }
+
+    if (entries.length === 0) {
+        const row = table.insertRow();
+        const cell = row.insertCell();
+        cell.colSpan = 4;
+        cell.textContent = "No patch scans recorded yet. Run a scan to create history.";
+        return;
+    }
+
+    for (const entry of entries) {
+        const row = table.insertRow();
+        const dateCell = row.insertCell();
+        dateCell.textContent = entry.date || "Unknown";
+
+        const activityCell = row.insertCell();
+        activityCell.textContent = entry.activity || "Patch Scan";
+
+        const resultCell = row.insertCell();
+        const badge = document.createElement("span");
+        badge.className = "badge " + (entry.success ? "updated" : "critical");
+        badge.textContent = entry.result || "Unknown";
+        resultCell.appendChild(badge);
+
+        const scannerCell = row.insertCell();
+        scannerCell.textContent = "SENTINELFORGE";
+    }
+}
+
+function addHistoryEntry(activity, result, success = true) {
+    const entries = (() => {
+        try {
+            const saved = JSON.parse(
+                localStorage.getItem("sentinelforgePatchHistory") || "[]"
+            );
+            return Array.isArray(saved) ? saved : [];
+        } catch (_) {
+            return [];
+        }
+    })();
+
+    entries.unshift({
+        date: new Date().toLocaleString("en-GB", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+        }),
+        activity,
+        result,
+        success
+    });
+
+    try {
+        localStorage.setItem(
+            "sentinelforgePatchHistory",
+            JSON.stringify(entries.slice(0, 50))
+        );
+    } catch (error) {
+        console.warn("Could not persist patch history:", error);
+    }
+
+    renderPatchHistory();
+}
+
+/* =========================================================
+   INITIAL STATE
+========================================================= */
+
+document.addEventListener("DOMContentLoaded", function() {
+    renderPatchHistory();
+    document.getElementById("installedPackages").innerText = "—";
+    document.getElementById("availableUpdates").innerText = "—";
+    document.getElementById("securityUpdates").innerText = "—";
+    document.getElementById("patchCompliance").innerText = "N/A";
+    document.getElementById("progressValue").innerText = "N/A";
+    document.getElementById("progressFill").style.width = "0%";
+});
+
+</script>
+
+</body>
+
+</html>

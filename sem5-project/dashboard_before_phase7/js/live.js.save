@@ -1,0 +1,276 @@
+// ============================================
+// CSPM LIVE DASHBOARD
+// ============================================
+
+let latestReport = null;
+
+
+// ============================================
+// UPDATE SCAN TIME
+// ============================================
+
+function updateTime() {
+
+    const scanTime =
+        document.getElementById("scanTime");
+
+    if (!scanTime) {
+        return;
+    }
+
+    const time = new Date();
+
+    scanTime.innerHTML =
+        "Last Dashboard Update: " +
+        time.toLocaleString();
+
+}
+
+
+// ============================================
+// LOAD CSPM REPORT
+// ============================================
+
+async function loadCSPMReport() {
+
+    try {
+
+        const report = await apiRequest("/api/report");
+
+
+        latestReport = report;
+
+
+        // Send report to index.html
+
+        if (
+            typeof setCSPMReport ===
+            "function"
+        ) {
+
+            setCSPMReport(report);
+
+        }
+
+
+        updateDashboard(report);
+
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "Unable to load CSPM report:",
+            error
+        );
+
+
+        document.getElementById(
+            "compliance"
+        ).innerText = "--";
+
+
+        document.getElementById(
+            "risk"
+        ).innerText = "--";
+
+
+        document.getElementById(
+            "alerts"
+        ).innerText = "--";
+
+
+        const scanner =
+            document.getElementById(
+                "scanStatus"
+            );
+
+
+        if (scanner) {
+
+            scanner.innerText =
+                "Unable to load CSPM report. Start the dashboard using a local web server.";
+
+        }
+
+    }
+
+}
+
+
+// ============================================
+// UPDATE DASHBOARD CARDS
+// ============================================
+
+function updateDashboard(report) {
+
+    if (!report || !report.summary) {
+        return;
+    }
+
+
+    const summary =
+        report.summary;
+
+
+    // ========================================
+    // VM COUNT
+    // ========================================
+
+    const vmCount =
+        document.getElementById("vmCount");
+
+if (vmCount) {
+
+    try {
+
+        const vmData = await apiRequest("/api/vms");
+
+        const lines = vmData.stdout
+            .split("\n")
+            .filter(line => line.trim());
+
+        const vmLines = lines.filter(
+            line =>
+                !line.includes("Name") &&
+                !line.includes("----") &&
+                !line.includes("running") &&
+                !line.includes("shut off")
+        );
+
+        vmCount.innerText = vmLines.length;
+
+    } catch (error) {
+
+        console.error("Failed to load VM count:", error);
+
+        vmCount.innerText = "0";
+    }
+
+}
+
+
+    // ========================================
+    // COMPLIANCE
+    // ========================================
+
+    const compliance =
+        document.getElementById(
+            "compliance"
+        );
+
+
+    if (compliance) {
+
+        compliance.innerText =
+            Number(
+                summary.compliance_score || 0
+            ).toFixed(0) + "%";
+
+    }
+
+
+    // ========================================
+    // RISK
+    // ========================================
+
+    const risk =
+        document.getElementById("risk");
+
+
+    if (risk) {
+
+        risk.innerText =
+            Number(
+                summary.risk_score || 0
+            ).toFixed(0) + "%";
+
+    }
+
+
+    // ========================================
+    // ACTIVE ALERTS
+    // ========================================
+
+    const alerts =
+        document.getElementById("alerts");
+
+
+    if (alerts) {
+
+        const rules =
+            report.rules || [];
+
+
+        const activeAlerts =
+            rules.filter(
+                rule =>
+                    rule.status === "FAIL" ||
+                    rule.status === "WARNING"
+            );
+
+
+        alerts.innerText =
+            activeAlerts.length;
+
+    }
+
+
+    // ========================================
+    // SCAN STATUS
+    // ========================================
+
+    const scanStatus =
+        document.getElementById(
+            "scanStatus"
+        );
+
+
+    if (scanStatus) {
+
+        scanStatus.innerText =
+            "CSPM scan completed — " +
+            summary.total_checks +
+            " checks | " +
+            summary.pass +
+            " passed | " +
+            summary.fail +
+            " failed | Compliance " +
+            Number(
+                summary.compliance_score
+            ).toFixed(0) +
+            "% | Risk " +
+            Number(
+                summary.risk_score
+            ).toFixed(0) +
+            "%";
+
+    }
+
+}
+
+
+// ============================================
+// INITIAL LOAD
+// ============================================
+
+updateTime();
+
+loadCSPMReport();
+
+
+// ============================================
+// REFRESH
+// ============================================
+
+setInterval(
+    updateTime,
+    1000
+);
+
+
+setInterval(
+    loadCSPMReport,
+    10000
+);

@@ -1,0 +1,536 @@
+/* =========================================================
+   SENTINELFORGE - REPORT MANAGEMENT
+   Uses existing read-only backend endpoints.
+   ========================================================= */
+
+const API_BASE = "http://127.0.0.1:5000";
+
+let reportData = null;
+let securityData = null;
+
+
+/* =========================================================
+   TOAST MESSAGES
+   ========================================================= */
+
+function showToast(message, type = "info") {
+    const container = document.getElementById("toastContainer");
+
+    if (!container) return;
+
+    const toast = document.createElement("div");
+    toast.className = "toast " + type;
+    toast.textContent = message;
+
+    container.appendChild(toast);
+
+    setTimeout(() => toast.remove(), 3500);
+}
+
+
+/* =========================================================
+   SAFE API REQUEST
+   ========================================================= */
+
+async function fetchJSON(endpoint) {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: "GET",
+        cache: "no-store"
+    });
+
+    if (!response.ok) {
+        throw new Error(`${endpoint}: HTTP ${response.status}`);
+    }
+
+    return response.json();
+}
+
+
+/* =========================================================
+   LOAD REPORT DATA
+   ========================================================= */
+
+async function loadReport() {
+    const status = document.getElementById("resultsStatus");
+
+    try {
+        /*
+         * Current security checks come from /api/security.
+         * This endpoint reads collected settings; it does not
+         * run a scan or modify the VMs.
+         */
+        securityData = await fetchJSON("/api/security");
+
+        /*
+         * The latest timestamped scan report is separate.
+         */
+        try {
+            reportData = await fetchJSON("/api/report");
+        } catch (error) {
+            console.warn("Historical report unavailable:", error);
+            reportData = null;
+        }
+
+        updateReportUI();
+
+        if (status) {
+            status.className = "status-box status-success";
+            status.textContent =
+                "Report data loaded from the SENTINELFORGE backend.";
+        }
+
+    } catch (error) {
+        console.error("Unable to load reports:", error);
+
+        if (status) {
+            status.className = "status-box status-error";
+            status.textContent =
+                "Unable to load security data. Check that the Flask API is running.";
+        }
+
+        showToast("Could not load security report data.", "error");
+    }
+}
+
+
+/* =========================================================
+   GET CURRENT SECURITY CHECKS
+   ========================================================= */
+
+function getRules() {
+    if (!securityData || !Array.isArray(securityData.rules)) {
+        return [];
+    }
+
+    return securityData.rules;
+}
+
+
+/* =========================================================
+   CALCULATE SUMMARY
+   ========================================================= */
+
+function getSummary() {
+    const rules = getRules();
+
+    const passed = rules.filter(rule => rule.status === "PASS").length;
+    const failed = rules.filter(rule => rule.status === "FAIL").length;
+
+    const unevaluated = rules.filter(rule =>
+        !["PASS", "FAIL"].includes(rule.status)
+    ).length;
+
+    const evaluated = passed + failed;
+
+    const compliance = evaluated > 0
+        ? (passed / evaluated) * 100
+        : 0;
+
+    const risk = evaluated > 0
+        ? (failed / evaluated) * 100
+        : 0;
+
+    return {
+        total: rules.length,
+        passed,
+        failed,
+        info: unevaluated,
+        compliance,
+        risk
+    };
+}
+
+
+/* =========================================================
+   FORMAT VALUES
+   ========================================================= */
+
+function formatPercent(value) {
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+        return "--";
+    }
+
+    return `${value.toFixed(1)}%`;
+}
+
+
+function setText(id, value) {
+    const element = document.getElementById(id);
+
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+
+/* =========================================================
+   UPDATE REPORT PAGE
+   ========================================================= */
+
+function updateReportUI() {
+    const summary = getSummary();
+    const evaluated = summary.passed + summary.failed;
+
+    setText("scannerName", securityData?.scanner?.name || "SENTINELFORGE");
+    setText("scannerVersion", securityData?.scanner?.version || "Not provided by API");
+    setText(
+        "framework",
+        securityData?.framework ||
+        (Array.isArray(securityData?.frameworks) ? securityData.frameworks.join(", ") : "") ||
+        "Framework metadata not provided by API"
+    );
+
+    setText("totalChecks", summary.total);
+    setText("passedChecks", summary.passed);
+    setText("failedChecks", summary.failed);
+    setText("infoChecks", summary.info);
+
+    const compliance = evaluated ? formatPercent(summary.compliance) : "--";
+    const risk = evaluated ? formatPercent(summary.risk) : "--";
+    setText("complianceScore", compliance);
+    setText("riskScore", risk);
+    setText("summaryCompliance", compliance);
+    setText("summaryRisk", risk);
+
+    const jsonAvailable = !!securityData && Array.isArray(securityData.rules);
+    setText("jsonCount", jsonAvailable ? "Available" : "Unavailable");
+    setText("pdfCount", "0");
+    setText("pdfDate", "Not saved on server");
+
+    const pdfStatus = document.getElementById("pdfStatus");
+    if (pdfStatus) {
+        pdfStatus.textContent = "Not saved";
+        pdfStatus.className = "badge info";
+    }
+
+    const viewButton = document.getElementById("viewPdfBtn");
+    if (viewButton) viewButton.disabled = true;
+
+    const latestPanel = Array.from(document.querySelectorAll(".panel")).find(panel =>
+        panel.textContent.includes("Controller:") &&
+        panel.textContent.includes("Target:")
+    );
+
+    const latestTime = reportData?.timestamp || securityData?.timestamp || null;
+
+    if (latestPanel) {
+        const heading = latestPanel.querySelector("h3");
+        if (heading) heading.textContent = "Latest Available Report";
+
+        latestPanel.querySelectorAll("p").forEach(paragraph => {
+            const text = paragraph.textContent;
+
+            if (text.includes("Controller:")) {
+                paragraph.innerHTML =
+                    "<strong>Controller:</strong> Ubuntu / SENTINELFORGE";
+            } else if (text.includes("Target:")) {
+                const hosts = Array.isArray(securityData?.hosts)
+                    ? securityData.hosts : [];
+                paragraph.innerHTML = "<strong>Target:</strong> " +
+                    (hosts.length
+                        ? hosts.map(escapeHTML).join(", ")
+                        : "Host information unavailable");
+            } else if (text.includes("Report Source:")) {
+                paragraph.innerHTML = "<strong>Report Source:</strong> " +
+                    escapeHTML(securityData?.source || "Flask API");
+            }
+        });
+
+        let timestampElement = document.getElementById("latestReportTime");
+        if (!timestampElement) {
+            timestampElement = document.createElement("p");
+            timestampElement.id = "latestReportTime";
+            latestPanel.appendChild(timestampElement);
+        }
+
+        timestampElement.textContent = latestTime
+            ? "Latest available data timestamp: " +
+              new Date(latestTime).toLocaleString()
+            : "Latest data timestamp: unavailable";
+    }
+
+    const scannerStatus = document.querySelector(
+        ".panel table tbody tr:nth-child(2) .badge"
+    );
+
+    if (scannerStatus) {
+        scannerStatus.textContent = jsonAvailable ? "Available" : "Unavailable";
+        scannerStatus.className = jsonAvailable ? "badge pass" : "badge info";
+    }
+}
+
+
+/* =========================================================
+   VIEW REPORT JSON
+   ========================================================= */
+
+async function viewScannerResults() {
+    const panel = document.getElementById("scannerResults");
+    const status = document.getElementById("resultsStatus");
+    const viewer = document.getElementById("jsonViewer");
+
+    panel.classList.add("show");
+    status.className = "status-box status-info";
+    status.textContent = "Loading report data...";
+
+    try {
+        if (!securityData) {
+            await loadReport();
+        }
+
+        if (!securityData) {
+            throw new Error("No security data is available.");
+        }
+
+        const output = {
+            source: securityData.source || "SENTINELFORGE API",
+            timestamp: securityData.timestamp || null,
+            hosts: securityData.hosts || [],
+            total_checks: getSummary().total,
+            passed: getSummary().passed,
+            failed: getSummary().failed,
+            compliance_score: Number(
+                getSummary().compliance.toFixed(1)
+            ),
+            risk_score: Number(
+                getSummary().risk.toFixed(1)
+            ),
+            rules: getRules()
+        };
+
+        viewer.textContent = JSON.stringify(output, null, 2);
+
+        status.className = "status-box status-success";
+        status.textContent = "Current security report loaded successfully.";
+
+        panel.scrollIntoView({ behavior: "smooth" });
+
+    } catch (error) {
+        console.error(error);
+
+        status.className = "status-box status-error";
+        status.textContent = "Unable to display the security report.";
+
+        viewer.textContent = "";
+    }
+}
+
+
+/* =========================================================
+   DOWNLOAD JSON
+   ========================================================= */
+
+async function downloadJSON() {
+    try {
+        if (!securityData) {
+            await loadReport();
+        }
+
+        if (!securityData) {
+            throw new Error("No security data available.");
+        }
+
+        const summary = getSummary();
+
+        const output = {
+            report_name: "SENTINELFORGE Security Report",
+            source: securityData.source || "SENTINELFORGE API",
+            timestamp: securityData.timestamp || null,
+            hosts: securityData.hosts || [],
+            summary: {
+                total_checks: summary.total,
+                passed: summary.passed,
+                failed: summary.failed,
+                unevaluated: summary.info,
+                compliance_score: Number(summary.compliance.toFixed(1)),
+                risk_score: Number(summary.risk.toFixed(1))
+            },
+            rules: getRules()
+        };
+
+        const blob = new Blob(
+            [JSON.stringify(output, null, 2)],
+            { type: "application/json" }
+        );
+
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+
+        link.href = url;
+        link.download = "sentinelforge-security-report.json";
+
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+        showToast("JSON report downloaded successfully.", "success");
+
+    } catch (error) {
+        console.error(error);
+        showToast("Unable to download the JSON report.", "error");
+    }
+}
+
+
+/* =========================================================
+   GENERATE PRINTABLE REPORT
+   ========================================================= */
+
+function generatePDF() {
+    if (!securityData) {
+        showToast("Report data is still loading. Try again.", "error");
+        return;
+    }
+
+    const summary = getSummary();
+    const rules = getRules();
+
+    const rows = rules.map(rule => `
+        <tr>
+            <td>${escapeHTML(rule.hostname || "-")}</td>
+            <td>${escapeHTML(rule.name || rule.rule_id || "-")}</td>
+            <td>${escapeHTML(rule.severity || "-")}</td>
+            <td>${escapeHTML(rule.status || "UNKNOWN")}</td>
+            <td>${escapeHTML(rule.expected || "-")}</td>
+            <td>${escapeHTML(rule.actual || "-")}</td>
+        </tr>
+    `).join("");
+
+    const generated = new Date().toLocaleString();
+
+    const printWindow = window.open("", "_blank");
+
+    if (!printWindow) {
+        showToast("Allow pop-ups to generate the printable report.", "error");
+        return;
+    }
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>SENTINELFORGE Security Report</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    margin: 28px;
+                    color: #111827;
+                }
+                h1, h2 { color: #111827; }
+                .summary {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 18px;
+                    margin: 20px 0;
+                }
+                .summary div {
+                    border: 1px solid #d1d5db;
+                    padding: 12px;
+                    min-width: 120px;
+                }
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    font-size: 10px;
+                }
+                th, td {
+                    border: 1px solid #d1d5db;
+                    padding: 6px;
+                    text-align: left;
+                    overflow-wrap: anywhere;
+                }
+                th { background: #f3f4f6; }
+                @media print {
+                    body { margin: 12mm; }
+                    tr { break-inside: avoid; }
+                }
+            </style>
+        </head>
+        <body>
+            <h1>SENTINELFORGE</h1>
+            <h2>Security Compliance Report</h2>
+            <p>Generated: ${escapeHTML(generated)}</p>
+            <p>Source: ${escapeHTML(securityData.source || "SENTINELFORGE API")}</p>
+            <p>Hosts: ${escapeHTML((securityData.hosts || []).join(", "))}</p>
+            <p>Report timestamp: ${escapeHTML(securityData.timestamp || "Unavailable")}</p>
+
+            <div class="summary">
+                <div><strong>Total checks</strong><p>${summary.total}</p></div>
+                <div><strong>Passed</strong><p>${summary.passed}</p></div>
+                <div><strong>Failed</strong><p>${summary.failed}</p></div>
+                <div><strong>Compliance</strong><p>${summary.compliance.toFixed(1)}%</p></div>
+                <div><strong>Risk</strong><p>${summary.risk.toFixed(1)}%</p></div>
+            </div>
+
+            <h2>Security Checks</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Host</th>
+                        <th>Check</th>
+                        <th>Severity</th>
+                        <th>Status</th>
+                        <th>Expected</th>
+                        <th>Actual</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>
+            <p>Generated by SENTINELFORGE.</p>
+            <script>
+                window.onload = function() {
+                    window.focus();
+                    window.print();
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+
+    printWindow.document.close();
+
+    showToast(
+        "Printable report opened. Choose Save as PDF in the print dialog.",
+        "success"
+    );
+}
+
+
+/* =========================================================
+   VIEW PDF
+   ========================================================= */
+
+function viewPDF() {
+    showToast(
+        "A permanent PDF has not been saved on the server. Generate a report and choose Save as PDF.",
+        "info"
+    );
+}
+
+
+/* =========================================================
+   ESCAPE HTML
+   ========================================================= */
+
+function escapeHTML(value) {
+    if (value === null || value === undefined) {
+        return "";
+    }
+
+    return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+
+/* =========================================================
+   INITIALIZATION
+   ========================================================= */
+
+document.addEventListener("DOMContentLoaded", loadReport);

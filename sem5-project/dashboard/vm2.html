@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Virtual Machine 2 | Advanced Private Cloud CSPM</title>
+
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/sidebar.css">
+<link rel="stylesheet" href="css/cards.css">
+<link rel="stylesheet" href="css/tables.css">
+<link rel="stylesheet" href="css/animations.css">
+<link rel="stylesheet" href="css/responsive.css">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<style>
+
+/* ===============================
+   VM PAGE
+================================ */
+
+.vm-name {
+    cursor: pointer;
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+.vm-name:hover {
+    opacity: 0.8;
+}
+
+
+/* ===============================
+   HEADER ACTIONS
+================================ */
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.action-btn {
+    border: none;
+    padding: 11px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+}
+
+.refresh-btn {
+    background: #2563eb;
+    color: white;
+}
+
+.scan-btn {
+    background: #16a34a;
+    color: white;
+}
+
+
+/* ===============================
+   VM DETAILS
+================================ */
+
+#vmDetails {
+    display: none;
+}
+
+#vmDetails.show {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.vm-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    flex-wrap: wrap;
+}
+
+.close-button {
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+
+/* ===============================
+   DETAIL GRID
+================================ */
+
+.detail-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.detail-card {
+    padding: 20px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.07);
+    transition: 0.25s;
+}
+
+.detail-card:hover {
+    transform: translateY(-3px);
+    background: rgba(255,255,255,0.08);
+}
+
+.detail-card h4 {
+    margin-bottom: 10px;
+    opacity: 0.8;
+}
+
+.detail-card p {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0;
+}
+
+
+/* ===============================
+   QUICK ACTIONS
+================================ */
+
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.quick-btn {
+    padding: 14px;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.quick-btn:hover {
+    transform: translateY(-2px);
+}
+
+.btn-start {
+    background: #16a34a;
+    color: white;
+}
+
+.btn-stop {
+    background: #dc2626;
+    color: white;
+}
+
+.btn-restart {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-scan {
+    background: #2563eb;
+    color: white;
+}
+
+
+/* ===============================
+   PROGRESS
+================================ */
+
+.progress-container {
+    width: 100%;
+    height: 9px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    transition: width 0.5s ease;
+}
+
+
+/* ===============================
+   STATUS
+================================ */
+
+.status-dot {
+    display: inline-block;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-right: 6px;
+    background: #22c55e;
+}
+
+.status-online {
+    color: #22c55e;
+}
+
+.status-offline {
+    color: #ef4444;
+}
+
+
+/* ===============================
+   ACTIVITY LOG
+================================ */
+
+.activity-log {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.log-item {
+    padding: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 14px;
+}
+
+.log-time {
+    opacity: 0.6;
+    margin-right: 10px;
+}
+
+
+/* ===============================
+   TOAST
+================================ */
+
+#toastContainer {
+    position: fixed;
+    right: 25px;
+    bottom: 25px;
+    z-index: 9999;
+}
+
+.toast {
+    min-width: 280px;
+    padding: 15px 18px;
+    margin-top: 10px;
+    border-radius: 9px;
+    background: #1f2937;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    animation: toastIn 0.3s ease;
+}
+
+.toast.success {
+    border-left: 4px solid #22c55e;
+}
+
+.toast.warning {
+    border-left: 4px solid #f59e0b;
+}
+
+.toast.info {
+    border-left: 4px solid #3b82f6;
+}
+
+
+/* ===============================
+   ANIMATIONS
+================================ */
+
+@keyframes fadeIn {
+
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+}
+
+@keyframes toastIn {
+
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+}
+
+
+/* ===============================
+   RESPONSIVE
+================================ */
+
+@media (max-width: 1000px) {
+
+    .detail-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    .detail-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .quick-actions {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<!-- ==========================================
+     SIDEBAR
+========================================== -->
+
+<aside class="sidebar">
+
+<div class="logo">
+
+<i class="fa-solid fa-shield-halved"></i>
+
+<h2>CSPM</h2>
+
+</div>
+
+
+<ul>
+
+<li>
+<a href="index.html">
+<i class="fa-solid fa-chart-line"></i>
+Dashboard
+</a>
+</li>
+
+
+<li class="active">
+<a href="vm.html">
+<i class="fa-solid fa-server"></i>
+Virtual Machines
+</a>
+</li>
+
+
+<li>
+<a href="compliance.html">
+<i class="fa-solid fa-shield"></i>
+Compliance
+</a>
+</li>
+
+
+<li>
+<a href="security.html">
+<i class="fa-solid fa-lock"></i>
+Security
+</a>
+</li>
+
+
+<li>
+<a href="drift.html">
+<i class="fa-solid fa-arrows-rotate"></i>
+Drift Detection
+</a>
+</li>
+
+
+<li>
+<a href="baseline.html">
+<i class="fa-solid fa-layer-group"></i>
+Baseline
+</a>
+</li>
+
+
+<li>
+<a href="patch.html">
+<i class="fa-solid fa-download"></i>
+Patch
+</a>
+</li>
+
+
+<li>
+<a href="remediation.html">
+<i class="fa-solid fa-screwdriver-wrench"></i>
+Remediation
+</a>
+</li>
+
+
+<li>
+<a href="reports.html">
+<i class="fa-solid fa-file-lines"></i>
+Reports
+</a>
+</li>
+
+
+<li>
+<a href="settings.html">
+<i class="fa-solid fa-gear"></i>
+Settings
+</a>
+</li>
+
+</ul>
+
+</aside>
+
+
+
+<!-- ==========================================
+     MAIN CONTENT
+========================================== -->
+
+<main class="content">
+
+
+<!-- HEADER -->
+
+<header class="header">
+
+<div>
+
+<h1>
+Virtual Machine 2
+</h1>
+
+<p>
+Private Cloud Infrastructure
+</p>
+
+</div>
+
+
+<div class="header-actions">
+
+<button class="action-btn refresh-btn"
+onclick="refreshVM()">
+
+<i class="fa-solid fa-rotate"></i>
+Refresh
+
+</button>
+
+
+<button class="action-btn scan-btn"
+onclick="securityScan()">
+
+<i class="fa-solid fa-shield-halved"></i>
+Security Scan
+
+</button>
+
+</div>
+
+</header>
+
+
+
+<!-- ==========================================
+     SUMMARY CARDS
+========================================== -->
+
+<section class="cards">
+
+
+<div class="card"
+onclick="showVM()"
+style="cursor:pointer;">
+
+<i class="fa-solid fa-server"></i>
+
+<h3>
+Total Virtual Machines
+</h3>
+
+<h1 id="totalVM">
+1
+</h1>
+
+</div>
+
+
+
+<div class="card"
+onclick="showVM()"
+style="cursor:pointer;">
+
+<i class="fa-solid fa-circle-check"></i>
+
+<h3>
+Running
+</h3>
+
+<h1 id="runningVM">
+1
+</h1>
+
+</div>
+
+
+
+<div class="card"
+onclick="showResourceDetails()"
+style="cursor:pointer;">
+
+<i class="fa-solid fa-microchip"></i>
+
+<h3>
+CPU Usage
+</h3>
+
+<h1 id="cpuUsage">
+25%
+</h1>
+
+</div>
+
+
+
+<div class="card"
+onclick="showResourceDetails()"
+style="cursor:pointer;">
+
+<i class="fa-solid fa-memory"></i>
+
+<h3>
+RAM Usage
+</h3>
+
+<h1 id="ramUsage">
+3 GB
+</h1>
+
+</div>
+
+
+</section>
+
+
+
+<!-- ==========================================
+     VM INVENTORY
+========================================== -->
+
+<div class="panel">
+
+<h2>
+
+<i class="fa-solid fa-server"></i>
+
+Virtual Machine Details
+
+</h2>
+
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>VM Name</th>
+
+<th>Operating System</th>
+
+<th>Status</th>
+
+<th>IP Address</th>
+
+<th>Compliance</th>
+
+<th>Action</th>
+
+</tr>
+
+</thead>
+
+
+<tbody>
+
+<tr>
+
+<td>
+
+<span class="vm-name"
+onclick="showVM()">
+
+<i class="fa-solid fa-server"></i>
+
+Ubuntu-Server-02
+
+</span>
+
+</td>
+
+
+<td>
+Ubuntu 24.04
+</td>
+
+
+<td>
+
+<span id="vmStatusBadge"
+class="badge running">
+
+Running
+
+</span>
+
+</td>
+
+
+<td>
+192.168.56.102
+</td>
+
+
+<td>
+
+<span class="badge pass">
+
+100%
+
+</span>
+
+</td>
+
+
+<td>
+
+<button class="quick-btn btn-scan"
+onclick="showVM()">
+
+View
+
+</button>
+
+</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+
+
+<!-- ==========================================
+     VM DETAILS
+========================================== -->
+
+<div class="panel"
+id="vmDetails">
+
+
+<div class="vm-detail-header">
+
+<div>
+
+<h2>
+
+<i class="fa-solid fa-server"></i>
+
+Ubuntu-Server-02
+
+</h2>
+
+<p>
+Ubuntu 24.04 • 192.168.56.102
+</p>
+
+</div>
+
+
+<button class="close-button"
+onclick="closeVM()">
+
+<i class="fa-solid fa-xmark"></i>
+
+Close
+
+</button>
+
+</div>
+
+
+
+<!-- DETAILS -->
+
+<div class="detail-grid">
+
+
+<div class="detail-card">
+
+<h4>
+<i class="fa-solid fa-circle-check"></i>
+Status
+</h4>
+
+<p id="detailStatus">
+Running
+</p>
+
+</div>
+
+
+<div class="detail-card">
+
+<h4>
+<i class="fa-solid fa-microchip"></i>
+CPU Usage
+</h4>
+
+<p id="detailCPU">
+25%
+</p>
+
+</div>
+
+
+<div class="detail-card">
+
+<h4>
+<i class="fa-solid fa-memory"></i>
+RAM Usage
+</h4>
+
+<p id="detailRAM">
+3 GB
+</p>
+
+</div>
+
+
+<div class="detail-card">
+
+<h4>
+<i class="fa-solid fa-hard-drive"></i>
+Disk Usage
+</h4>
+
+<p>
+42%
+</p>
+
+</div>
+
+
+<div class="detail-card">
+
+<h4>
+<i class="fa-solid fa-network-wired"></i>
+IP Address
+</h4>
+
+<p>
+192.168.56.102
+</p>
+
+</div>
+
+
+<div class="detail-card">
+
+<h4>
+<i class="fa-solid fa-clock"></i>
+Uptime
+</h4>
+
+<p id="uptime">
+1 Day 8 Hours
+</p>
+
+</div>
+
+
+<div class="detail-card">
+
+<h4>
+<i class="fa-solid fa-fire"></i>
+Firewall
+</h4>
+
+<p>
+Active
+</p>
+
+</div>
+
+
+<div class="detail-card">
+
+<h4>
+<i class="fa-solid fa-key"></i>
+SSH
+</h4>
+
+<p>
+Enabled
+</p>
+
+</div>
+
+
+<div class="detail-card">
+
+<h4>
+<i class="fa-solid fa-shield"></i>
+CIS Compliance
+</h4>
+
+<p>
+100%
+</p>
+
+</div>
+
+
+</div>
+
+
+
+<!-- ==========================================
+     QUICK ACTIONS
+========================================== -->
+
+<div class="panel">
+
+<h2>
+
+<i class="fa-solid fa-bolt"></i>
+
+Quick Actions
+
+</h2>
+
+
+<div class="quick-actions">
+
+
+<button class="quick-btn btn-start"
+onclick="startVM()">
+
+<i class="fa-solid fa-play"></i>
+
+Start VM
+
+</button>
+
+
+<button class="quick-btn btn-stop"
+onclick="stopVM()">
+
+<i class="fa-solid fa-stop"></i>
+
+Stop VM
+
+</button>
+
+
+<button class="quick-btn btn-restart"
+onclick="restartVM()">
+
+<i class="fa-solid fa-rotate"></i>
+
+Restart VM
+
+</button>
+
+
+<button class="quick-btn btn-scan"
+onclick="securityScan()">
+
+<i class="fa-solid fa-shield-halved"></i>
+
+Run Scan
+
+</button>
+
+</div>
+
+</div>
+
+
+
+<!-- ==========================================
+     RESOURCE MONITOR
+========================================== -->
+
+<div class="panel">
+
+<h2>
+
+<i class="fa-solid fa-chart-line"></i>
+
+Resource Monitoring
+
+</h2>
+
+
+<p>
+CPU Usage
+</p>
+
+<div class="progress-container">
+
+<div id="cpuProgress"
+class="progress-bar"
+style="width:25%;">
+
+</div>
+
+</div>
+
+
+
+<p style="margin-top:20px;">
+Memory Usage
+</p>
+
+<div class="progress-container">
+
+<div id="ramProgress"
+class="progress-bar"
+style="width:50%;">
+
+</div>
+
+</div>
+
+
+
+<p style="margin-top:20px;">
+Disk Usage
+</p>
+
+<div class="progress-container">
+
+<div class="progress-bar"
+style="width:42%;">
+
+</div>
+
+</div>
+
+</div>
+
+
+
+<!-- ==========================================
+     SECURITY STATUS
+========================================== -->
+
+<div class="panel">
+
+<h2>
+
+<i class="fa-solid fa-shield-halved"></i>
+
+Security Status
+
+</h2>
+
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Component</th>
+
+<th>Status</th>
+
+<th>Details</th>
+
+</tr>
+
+</thead>
+
+
+<tbody>
+
+
+<tr>
+
+<td>
+Firewall
+</td>
+
+<td>
+
+<span class="badge pass">
+PASS
+</span>
+
+</td>
+
+<td>
+UFW firewall is active
+</td>
+
+</tr>
+
+
+
+<tr>
+
+<td>
+SSH Service
+</td>
+
+<td>
+
+<span class="badge pass">
+RUNNING
+</span>
+
+</td>
+
+<td>
+SSH service available on port 22
+</td>
+
+</tr>
+
+
+
+<tr>
+
+<td>
+Root Login
+</td>
+
+<td>
+
+<span class="badge info">
+RESTRICTED
+</span>
+
+</td>
+
+<td>
+Root SSH login requires configuration verification
+</td>
+
+</tr>
+
+
+
+<tr>
+
+<td>
+Password Authentication
+</td>
+
+<td>
+
+<span class="badge info">
+CHECK
+</span>
+
+</td>
+
+<td>
+Configuration monitored by CSPM scanner
+</td>
+
+</tr>
+
+
+</tbody>
+
+</table>
+
+</div>
+
+
+
+<!-- ==========================================
+     ACTIVITY LOG
+========================================== -->
+
+<div class="panel">
+
+<h2>
+
+<i class="fa-solid fa-clock-rotate-left"></i>
+
+VM Activity
+
+</h2>
+
+
+<div class="activity-log"
+id="activityLog">
+
+
+<div class="log-item">
+
+<span class="log-time">
+Today
+</span>
+
+VM 2 inventory loaded successfully.
+
+</div>
+
+
+
+<div class="log-item">
+
+<span class="log-time">
+Today
+</span>
+
+Ubuntu-Server-02 detected as Running.
+
+</div>
+
+
+
+<div class="log-item">
+
+<span class="log-time">
+Today
+</span>
+
+CIS security status available.
+
+</div>
+
+
+</div>
+
+</div>
+
+
+</div>
+
+
+</main>
+
+
+
+<!-- ==========================================
+     TOAST CONTAINER
+========================================== -->
+
+<div id="toastContainer"></div>
+
+
+
+<script>
+
+
+/* ==========================================
+   VM 2 STATE
+========================================== */
+
+let vmRunning = true;
+
+let cpu = 25;
+
+let ram = 3;
+
+
+/* ==========================================
+   SHOW VM
+========================================== */
+
+function showVM() {
+
+    document
+    .getElementById("vmDetails")
+    .classList.add("show");
+
+    addLog("VM 2 details opened.");
+
+}
+
+
+/* ==========================================
+   CLOSE VM
+========================================== */
+
+function closeVM() {
+
+    document
+    .getElementById("vmDetails")
+    .classList.remove("show");
+
+}
+
+
+/* ==========================================
+   TOAST
+========================================== */
+
+function showToast(message, type = "info") {
+
+    const container =
+        document.getElementById("toastContainer");
+
+    const toast =
+        document.createElement("div");
+
+    toast.className =
+        "toast " + type;
+
+    toast.innerHTML =
+        message;
+
+    container.appendChild(toast);
+
+    setTimeout(function() {
+
+        toast.remove();
+
+    }, 3500);
+
+}
+
+
+/* ==========================================
+   ACTIVITY LOG
+========================================== */
+
+function addLog(message) {
+
+    const log =
+        document.getElementById("activityLog");
+
+    const item =
+        document.createElement("div");
+
+    item.className =
+        "log-item";
+
+    item.innerHTML =
+        '<span class="log-time">' +
+        new Date().toLocaleTimeString() +
+        '</span>' +
+        message;
+
+    log.prepend(item);
+
+}
+
+
+/* ==========================================
+   UPDATE VM STATUS
+========================================== */
+
+function updateVMStatus() {
+
+    const statusBadge =
+        document.getElementById("vmStatusBadge");
+
+    const detailStatus =
+        document.getElementById("detailStatus");
+
+    const runningVM =
+        document.getElementById("runningVM");
+
+
+    if (vmRunning) {
+
+        statusBadge.innerText =
+            "Running";
+
+        statusBadge.className =
+            "badge running";
+
+        detailStatus.innerText =
+            "Running";
+
+        runningVM.innerText =
+            "1";
+
+    } else {
+
+        statusBadge.innerText =
+            "Stopped";
+
+        statusBadge.className =
+            "badge";
+
+        detailStatus.innerText =
+            "Stopped";
+
+        runningVM.innerText =
+            "0";
+
+    }
+
+}
+
+
+/* ==========================================
+   START VM
+========================================== */
+
+function startVM() {
+
+    if (vmRunning) {
+
+        showToast(
+            "Ubuntu-Server-02 is already running.",
+            "info"
+        );
+
+        return;
+
+    }
+
+
+    showToast(
+        "Starting Ubuntu-Server-02...",
+        "info"
+    );
+
+
+    addLog(
+        "Start operation initiated."
+    );
+
+
+    setTimeout(function() {
+
+        vmRunning = true;
+
+        updateVMStatus();
+
+        showToast(
+            "Ubuntu-Server-02 started successfully.",
+            "success"
+        );
+
+        addLog(
+            "VM 2 started successfully."
+        );
+
+    }, 1500);
+
+}
+
+
+/* ==========================================
+   STOP VM
+========================================== */
+
+function stopVM() {
+
+    if (!vmRunning) {
+
+        showToast(
+            "Ubuntu-Server-02 is already stopped.",
+            "warning"
+        );
+
+        return;
+
+    }
+
+
+    if (!confirm(
+        "Are you sure you want to stop Ubuntu-Server-02?"
+    )) {
+
+        return;
+
+    }
+
+
+    showToast(
+        "Stopping Ubuntu-Server-02...",
+        "warning"
+    );
+
+
+    addLog(
+        "Stop operation initiated."
+    );
+
+
+    setTimeout(function() {
+
+        vmRunning = false;
+
+        updateVMStatus();
+
+        showToast(
+            "Ubuntu-Server-02 stopped.",
+            "success"
+        );
+
+        addLog(
+            "VM 2 stopped successfully."
+        );
+
+    }, 1500);
+
+}
+
+
+/* ==========================================
+   RESTART VM
+========================================== */
+
+function restartVM() {
+
+    showToast(
+        "Restarting Ubuntu-Server-02...",
+        "info"
+    );
+
+
+    addLog(
+        "Restart operation initiated."
+    );
+
+
+    vmRunning = false;
+
+    updateVMStatus();
+
+
+    setTimeout(function() {
+
+        vmRunning = true;
+
+        updateVMStatus();
+
+        showToast(
+            "Ubuntu-Server-02 restarted successfully.",
+            "success"
+        );
+
+        addLog(
+            "VM 2 restart completed."
+        );
+
+    }, 2500);
+
+}
+
+
+/* ==========================================
+   SECURITY SCAN
+========================================== */
+
+function securityScan() {
+
+    showToast(
+        "Security scan started for Ubuntu-Server-02...",
+        "info"
+    );
+
+
+    addLog(
+        "CSPM security scan started for VM 2."
+    );
+
+
+    setTimeout(function() {
+
+        addLog(
+            "Firewall check: PASS."
+        );
+
+    }, 700);
+
+
+    setTimeout(function() {
+
+        addLog(
+            "SSH configuration check completed."
+        );
+
+    }, 1400);
+
+
+    setTimeout(function() {
+
+        addLog(
+            "CIS compliance verification completed."
+        );
+
+
+        showToast(
+            "Security scan completed successfully.",
+            "success"
+        );
+
+    }, 2200);
+
+}
+
+
+/* ==========================================
+   RESOURCE DETAILS
+========================================== */
+
+function showResourceDetails() {
+
+    showVM();
+
+    showToast(
+        "VM 2 resource monitoring details displayed.",
+        "info"
+    );
+
+}
+
+
+/* ==========================================
+   REFRESH VM
+========================================== */
+
+function refreshVM() {
+
+    showToast(
+        "Refreshing Ubuntu-Server-02 information...",
+        "info"
+    );
+
+
+    addLog(
+        "VM 2 information refresh requested."
+    );
+
+
+    setTimeout(function() {
+
+        if (vmRunning) {
+
+            cpu =
+                Math.floor(
+                    Math.random() * 15
+                ) + 20;
+
+            ram =
+                (
+                    Math.random() * 1 +
+                    2.5
+                ).toFixed(1);
+
+        } else {
+
+            cpu = 0;
+
+            ram = 0;
+
+        }
+
+
+        document.getElementById("cpuUsage")
+            .innerText =
+            cpu + "%";
+
+
+        document.getElementById("ramUsage")
+            .innerText =
+            ram + " GB";
+
+
+        document.getElementById("detailCPU")
+            .innerText =
+            cpu + "%";
+
+
+        document.getElementById("detailRAM")
+            .innerText =
+            ram + " GB";
+
+
+        document.getElementById("cpuProgress")
+            .style.width =
+            cpu + "%";
+
+
+        document.getElementById("ramProgress")
+            .style.width =
+            Math.min(
+                parseFloat(ram) * 20,
+                100
+            ) + "%";
+
+
+        updateVMStatus();
+
+
+        addLog(
+            "VM 2 information refreshed."
+        );
+
+
+        showToast(
+            "VM 2 information updated.",
+            "success"
+        );
+
+    }, 1000);
+
+}
+
+
+/* ==========================================
+   AUTO RESOURCE UPDATE
+========================================== */
+
+setInterval(function() {
+
+    if (!vmRunning) {
+
+        return;
+
+    }
+
+
+    cpu =
+        Math.floor(
+            Math.random() * 12
+        ) + 20;
+
+
+    document.getElementById("cpuUsage")
+        .innerText =
+        cpu + "%";
+
+
+    document.getElementById("detailCPU")
+        .innerText =
+        cpu + "%";
+
+
+    document.getElementById("cpuProgress")
+        .style.width =
+        cpu + "%";
+
+
+}, 5000);
+
+
+/* ==========================================
+   INITIALIZATION
+========================================== */
+
+updateVMStatus();
+
+</script>
+
+
+</body>
+
+</html>

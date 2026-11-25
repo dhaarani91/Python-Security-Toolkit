@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Auto Remediation | Advanced Private Cloud CSPM</title>
+
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/sidebar.css">
+<link rel="stylesheet" href="css/cards.css">
+<link rel="stylesheet" href="css/tables.css">
+<link rel="stylesheet" href="css/animations.css">
+<link rel="stylesheet" href="css/responsive.css">
+
+<link rel="stylesheet"
+href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+
+<style>
+
+/* =========================
+   REMEDIATION PAGE
+========================= */
+
+.page-intro {
+    margin-bottom: 25px;
+}
+
+.page-intro h1 {
+    margin-bottom: 8px;
+}
+
+.page-intro p {
+    opacity: 0.75;
+}
+
+/* Status cards */
+
+.remediation-cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 25px;
+}
+
+.rem-card {
+    padding: 22px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    transition: 0.25s;
+}
+
+.rem-card:hover {
+    transform: translateY(-3px);
+    background: rgba(255,255,255,0.08);
+}
+
+.rem-card i {
+    font-size: 24px;
+    margin-bottom: 12px;
+}
+
+.rem-card h4 {
+    margin: 0 0 8px;
+    opacity: 0.7;
+}
+
+.rem-card h2 {
+    margin: 0;
+}
+
+/* Approval */
+
+.approval-box {
+    padding: 20px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border-left: 4px solid #2ecc71;
+    margin-top: 15px;
+}
+
+.approval-box strong {
+    display: block;
+    margin-bottom: 7px;
+}
+
+/* Action buttons */
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.rem-btn {
+    padding: 10px 17px;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.rem-btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn-review {
+    background: #3498db;
+    color: white;
+}
+
+.btn-approve {
+    background: #2ecc71;
+    color: white;
+}
+
+.btn-reject {
+    background: #e74c3c;
+    color: white;
+}
+
+.btn-disabled {
+    background: #555;
+    color: #aaa;
+    cursor: not-allowed;
+}
+
+/* Issue information */
+
+.issue-details {
+    display: none;
+    margin-top: 18px;
+    padding: 18px;
+    border-radius: 9px;
+    background: rgba(0,0,0,0.18);
+}
+
+.issue-details.show {
+    display: block;
+}
+
+.issue-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 10px;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.issue-row:last-child {
+    border-bottom: none;
+}
+
+/* Timeline */
+
+.timeline {
+    margin-top: 10px;
+}
+
+.timeline-item {
+    display: flex;
+    gap: 15px;
+    padding: 13px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.timeline-item:last-child {
+    border-bottom: none;
+}
+
+.timeline-icon {
+    min-width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.08);
+}
+
+.timeline-content strong {
+    display: block;
+}
+
+.timeline-content small {
+    opacity: 0.6;
+}
+
+/* Execution terminal */
+
+.terminal {
+    background: #0b0f14;
+    color: #8cffb0;
+    padding: 18px;
+    border-radius: 8px;
+    font-family: monospace;
+    line-height: 1.7;
+    overflow-x: auto;
+}
+
+.terminal-title {
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+/* Responsive */
+
+@media (max-width: 1000px) {
+
+    .remediation-cards {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
+
+@media (max-width: 600px) {
+
+    .remediation-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .issue-row {
+        grid-template-columns: 1fr;
+    }
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<!-- =========================
+     SIDEBAR
+========================= -->
+
+<aside class="sidebar">
+
+<div class="logo">
+
+<i class="fa-solid fa-shield-halved"></i>
+
+<h2>CSPM</h2>
+
+</div>
+
+
+<ul>
+
+<li>
+<a href="index.html">
+<i class="fa-solid fa-chart-line"></i>
+Dashboard
+</a>
+</li>
+
+<li>
+<a href="vm.html">
+<i class="fa-solid fa-server"></i>
+Virtual Machines
+</a>
+</li>
+
+<li>
+<a href="compliance.html">
+<i class="fa-solid fa-shield"></i>
+Compliance
+</a>
+</li>
+
+<li>
+<a href="security.html">
+<i class="fa-solid fa-lock"></i>
+Security
+</a>
+</li>
+
+<li>
+<a href="drift.html">
+<i class="fa-solid fa-arrows-rotate"></i>
+Drift Detection
+</a>
+</li>
+
+<li>
+<a href="baseline.html">
+<i class="fa-solid fa-layer-group"></i>
+Baseline
+</a>
+</li>
+
+<li>
+<a href="patch.html">
+<i class="fa-solid fa-download"></i>
+Patch Management
+</a>
+</li>
+
+<li class="active">
+<a href="remediation.html">
+<i class="fa-solid fa-screwdriver-wrench"></i>
+Remediation
+</a>
+</li>
+
+<li>
+<a href="reports.html">
+<i class="fa-solid fa-file-lines"></i>
+Reports
+</a>
+</li>
+
+<li>
+<a href="settings.html">
+<i class="fa-solid fa-gear"></i>
+Settings
+</a>
+</li>
+
+</ul>
+
+</aside>
+
+
+<!-- =========================
+     MAIN CONTENT
+========================= -->
+
+<main class="content">
+
+
+<header class="header">
+
+<div>
+
+<h1>Auto Remediation</h1>
+
+<p>Approval-Based Security Remediation</p>
+
+</div>
+
+</header>
+
+
+<!-- =========================
+     SUMMARY CARDS
+========================= -->
+
+<section class="remediation-cards">
+
+
+<div class="rem-card">
+
+<i class="fa-solid fa-user-check"></i>
+
+<h4>Admin Approval</h4>
+
+<h2>APPROVED</h2>
+
+</div>
+
+
+<div class="rem-card">
+
+<i class="fa-solid fa-scroll"></i>
+
+<h4>Available Playbooks</h4>
+
+<h2>2</h2>
+
+</div>
+
+
+<div class="rem-card">
+
+<i class="fa-solid fa-screwdriver-wrench"></i>
+
+<h4>Fixes Applied</h4>
+
+<h2>1</h2>
+
+</div>
+
+
+<div class="rem-card">
+
+<i class="fa-solid fa-circle-check"></i>
+
+<h4>Remediation Status</h4>
+
+<h2>SUCCESS</h2>
+
+</div>
+
+
+</section>
+
+
+<!-- =========================
+     APPROVAL STATUS
+========================= -->
+
+<div class="panel">
+
+<h2>
+
+<i class="fa-solid fa-user-shield"></i>
+
+Administrator Approval
+
+</h2>
+
+
+<div class="approval-box">
+
+<strong>
+
+<i class="fa-solid fa-circle-check"></i>
+
+Approval Status: Approved
+
+</strong>
+
+<p>
+Security remediation actions require administrator approval
+before a corrective playbook is executed.
+</p>
+
+</div>
+
+</div>
+
+
+<!-- =========================
+     REMEDIATION TASKS
+========================= -->
+
+<div class="panel">
+
+<h2>
+
+<i class="fa-solid fa-list-check"></i>
+
+Remediation Tasks
+
+</h2>
+
+
+<table>
+
+<thead>
+
+<tr>
+
+<th>Issue</th>
+
+<th>Rule ID</th>
+
+<th>Playbook</th>
+
+<th>Severity</th>
+
+<th>Status</th>
+
+<th>Action</th>
+
+</tr>
+
+</thead>
+
+
+<tbody>
+
+
+<tr>
+
+<td>
+SSH Root Login
+</td>
+
+<td>
+CSPM-SSH-001
+</td>
+
+<td>
+fix_ssh.yml
+</td>
+
+<td>
+<span class="badge info">
+HIGH
+</span>
+</td>
+
+<td>
+<span class="badge pass">
+EXECUTED
+</span>
+</td>
+
+<td>
+
+<div class="action-buttons">
+
+<button
+class="rem-btn btn-review"
+onclick="showIssue()">
+
+<i class="fa-solid fa-eye"></i>
+Review
+
+</button>
+
+</div>
+
+</td>
+
+</tr>
+
+
+<tr>
+
+<td>
+SSH Password Authentication
+</td>
+
+<td>
+CSPM-SSH-002
+</td>
+
+<td>
+Pending playbook
+</td>
+
+<td>
+<span class="badge info">
+MEDIUM
+</span>
+</td>
+
+<td>
+<span class="badge info">
+DETECTED
+</span>
+</td>
+
+<td>
+
+<button
+class="rem-btn btn-disabled"
+onclick="pendingMessage()">
+
+<i class="fa-solid fa-clock"></i>
+Pending
+
+</button>
+
+</td>
+
+</tr>
+
+
+</tbody>
+
+</table>
+
+
+<!-- Issue Details -->
+
+<div id="issueDetails" class="issue-details">
+
+<h3>
+
+<i class="fa-solid fa-circle-info"></i>
+
+SSH Root Login Remediation Details
+
+</h3>
+
+
+<div class="issue-row">
+
+<strong>Rule ID</strong>
+
+<span>CSPM-SSH-001</span>
+
+</div>
+
+
+<div class="issue-row">
+
+<strong>Expected</strong>
+
+<span>PermitRootLogin no</span>
+
+</div>
+
+
+<div class="issue-row">
+
+<strong>Detected</strong>
+
+<span>PermitRootLogin prohibit-password</span>
+
+</div>
+
+
+<div class="issue-row">
+
+<strong>Remediation</strong>
+
+<span>
+Set PermitRootLogin no in the effective SSH configuration.
+</span>
+
+</div>
+
+
+<div class="issue-row">
+
+<strong>Playbook</strong>
+
+<span>playbooks/fix_ssh.yml</span>
+
+</div>
+
+
+<div class="issue-row">
+
+<strong>Approval</strong>
+
+<span>Administrator Approved</span>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =========================
+     EXECUTION SUMMARY
+========================= -->
+
+<div class="panel">
+
+<h2>
+
+<i class="fa-solid fa-terminal"></i>
+
+Execution Summary
+
+</h2>
+
+
+<div class="terminal">
+
+<div class="terminal-title">
+CSPM Remediation Log
+</div>
+
+<div>
+[OK] Security issue detected
+</div>
+
+<div>
+[OK] Rule CSPM-SSH-001 identified
+</div>
+
+<div>
+[OK] Administrator approval received
+</div>
+
+<div>
+[OK] Ansible playbook selected: fix_ssh.yml
+</div>
+
+<div>
+[OK] SSH configuration remediation completed
+</div>
+
+<div>
+[OK] SSH service restart requested
+</div>
+
+<div>
+[OK] Configuration verification completed
+</div>
+
+<div>
+[OK] Remediation status: SUCCESS
+</div>
+
+</div>
+
+</div>
+
+
+<!-- =========================
+     REMEDIATION HISTORY
+========================= -->
+
+<div class="panel">
+
+<h2>
+
+<i class="fa-solid fa-clock-rotate-left"></i>
+
+Remediation History
+
+</h2>
+
+
+<div class="timeline">
+
+
+<div class="timeline-item">
+
+<div class="timeline-icon">
+
+<i class="fa-solid fa-magnifying-glass"></i>
+
+</div>
+
+<div class="timeline-content">
+
+<strong>
+Security Issue Detected
+</strong>
+
+<small>
+CSPM-SSH-001 — SSH Root Login
+</small>
+
+</div>
+
+</div>
+
+
+<div class="timeline-item">
+
+<div class="timeline-icon">
+
+<i class="fa-solid fa-user-check"></i>
+
+</div>
+
+<div class="timeline-content">
+
+<strong>
+Administrator Approval
+</strong>
+
+<small>
+Remediation action approved
+</small>
+
+</div>
+
+</div>
+
+
+<div class="timeline-item">
+
+<div class="timeline-icon">
+
+<i class="fa-solid fa-play"></i>
+
+</div>
+
+<div class="timeline-content">
+
+<strong>
+Playbook Executed
+</strong>
+
+<small>
+fix_ssh.yml
+</small>
+
+</div>
+
+</div>
+
+
+<div class="timeline-item">
+
+<div class="timeline-icon">
+
+<i class="fa-solid fa-circle-check"></i>
+
+</div>
+
+<div class="timeline-content">
+
+<strong>
+Remediation Completed
+</strong>
+
+<small>
+SSH configuration verification completed
+</small>
+
+</div>
+
+</div>
+
+
+</div>
+
+</div>
+
+
+<!-- =========================
+     SYSTEM INFORMATION
+========================= -->
+
+<div class="panel">
+
+<h2>
+
+<i class="fa-solid fa-server"></i>
+
+Remediation Environment
+
+</h2>
+
+
+<table>
+
+<tbody>
+
+<tr>
+
+<td><strong>Controller</strong></td>
+
+<td>Kali Linux</td>
+
+</tr>
+
+<tr>
+
+<td><strong>Target</strong></td>
+
+<td>Ubuntu Virtual Machine</td>
+
+</tr>
+
+<tr>
+
+<td><strong>Automation</strong></td>
+
+<td>Ansible</td>
+
+</tr>
+
+<tr>
+
+<td><strong>Policy Engine</strong></td>
+
+<td>OPA</td>
+
+</tr>
+
+<tr>
+
+<td><strong>Security Framework</strong></td>
+
+<td>CIS-aligned</td>
+
+</tr>
+
+<tr>
+
+<td><strong>Approval Model</strong></td>
+
+<td>Administrator Approval Required</td>
+
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+
+</main>
+
+
+<script>
+
+/* =========================
+   ISSUE DETAILS
+========================= */
+
+function showIssue() {
+
+    const details =
+        document.getElementById("issueDetails");
+
+    details.classList.toggle("show");
+
+}
+
+
+/* =========================
+   PENDING MESSAGE
+========================= */
+
+function pendingMessage() {
+
+    alert(
+        "Remediation playbook is not configured yet.\n\n" +
+        "Issue: SSH Password Authentication\n" +
+        "Rule: CSPM-SSH-002\n\n" +
+        "Current status: DETECTED\n" +
+        "Action: Pending playbook integration"
+    );
+
+}
+
+</script>
+
+
+</body>
+
+</html>
